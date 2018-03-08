@@ -14,3 +14,7 @@ dependencies {
 	        compile 'com.github.limin13215:VismGethLibrary:v1.0.2'
 }
 ```
+
+## 调用API
+封装的类: 
+   VismGeth mVismGeth = new VismGeth(this);
