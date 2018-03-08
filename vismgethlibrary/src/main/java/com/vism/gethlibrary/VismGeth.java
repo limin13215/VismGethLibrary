@@ -7,9 +7,11 @@ import org.web3j.crypto.CipherException;
 import org.web3j.crypto.WalletUtils;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.Web3jFactory;
+import org.web3j.protocol.core.DefaultBlockParameterName;
 import org.web3j.protocol.http.HttpService;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
@@ -53,6 +55,22 @@ public class VismGeth {
             return false;
         }
         return true;
+    }
+
+    /**
+     *  根据钱包地址，获取ETH数量
+     * @param address
+     * @return BigInteger
+     */
+    public BigInteger getEthBalance(String address){
+        BigInteger balance = null;
+        try {
+            balance = web3.ethGetBalance(address, DefaultBlockParameterName.LATEST).send().getBalance();
+        } catch (IOException e) {
+            Log.e(TAG ,"错误提示信息:"+e.getMessage());
+            return balance;
+        }
+        return balance;
     }
 
 }
