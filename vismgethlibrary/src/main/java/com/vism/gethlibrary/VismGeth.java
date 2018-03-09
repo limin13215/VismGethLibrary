@@ -30,7 +30,8 @@ import java.util.concurrent.ExecutionException;
  */
 
 public class VismGeth {
-    private final static String TAG ="VismGethLibrary";
+    private static final  String TAG ="VismGethLibrary";
+    private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4300000);
     private Web3j web3;
     private Context context;
     Credentials credentials = null;
@@ -68,29 +69,13 @@ public class VismGeth {
     }
 
     /**
-     *  根据钱包地址，获取ETH数量
-     * @param address
-     * @return BigInteger
-     */
-    public BigInteger getEthBalance(String address){
-        BigInteger balance = null;
-        try {
-            balance = web3.ethGetBalance(address, DefaultBlockParameterName.LATEST).send().getBalance();
-        } catch (IOException e) {
-            Log.e(TAG ,"错误提示信息:"+e.getMessage());
-            return balance;
-        }
-        return balance;
-    }
-
-    /**
-     *  导入账户，并且返回账户凭证
+     *  导入钱包，并且返回钱包凭证; 如果返回值为null, 导入钱包失败;
      * @param password
      * @param keystore
      * @param filename
      * @return
      */
-    public Credentials importAccount(String password, String keystore, String filename){
+    public Credentials importWallet(String password, String keystore, String filename){
         try {
             FileTools.savePrivateFiles(context,keystore,filename);
             credentials = WalletUtils.loadCredentials(password,context.getFilesDir()+"/"+filename);
@@ -103,8 +88,8 @@ public class VismGeth {
     }
 
     /**
-     *   获取已经导入的账户凭证Credentials
-     *   通过Credentials可以获得账户地址
+     *   获取已经导入的账户凭证Credentials;
+     *   通过Credentials的getAddress()方法可以获得钱包地址Address
      * @return Credentials
      */
     public Credentials getCredentials(){
@@ -112,14 +97,13 @@ public class VismGeth {
     }
 
     /**
-     *   ETH转账,并返回hash值，如果为null，交易未广播成功
+     *   ETH 进行转账,并返回交易哈希值 ;如果返回值为null，交易未广播成功
      * @param to
      * @param gasPrice
-     * @param gasLimit
      * @param balance
      * @return
      */
-    public String sendETH(String to, String gasPrice, String gasLimit,String balance){
+    public String sendETH(String to, String gasPrice,String balance){
         String transaction_hash = "";
         try {
             // get the next available nonce
@@ -129,7 +113,7 @@ public class VismGeth {
             RawTransaction rawTransaction  = RawTransaction.createEtherTransaction(
                     nonce,
                     new BigInteger(gasPrice),
-                    new BigInteger(gasLimit),
+                    GAS_LIMIT,
                     to,
                     new BigInteger(balance));
             // sign & send our transaction
@@ -143,7 +127,15 @@ public class VismGeth {
         return transaction_hash;
     }
 
-    public String sendTokenByContract(String to, String gasPrice, String gasLimit,String balance, String contractAddress){
+    /**
+     *   根据代币合约地址， 进行代币转账
+     * @param to
+     * @param gasPrice
+     * @param balance
+     * @param contractAddress
+     * @return 交易哈希值
+     */
+    public String sendTokenByContract(String to, String gasPrice, String balance, String contractAddress){
         String transaction_hash = "";
         try {
             // get the next available nonce
@@ -156,7 +148,7 @@ public class VismGeth {
             RawTransaction rawTransaction = RawTransaction.createTransaction(
                     nonce,
                     new BigInteger(gasPrice),
-                    new BigInteger(gasLimit),
+                    GAS_LIMIT,
                     contractAddress,
                     encodedFunction);
 
@@ -173,5 +165,21 @@ public class VismGeth {
             e.printStackTrace();
         }
         return transaction_hash;
+    }
+
+    /**
+     *  根据钱包地址，获取ETH数量
+     * @param address
+     * @return BigInteger
+     */
+    public BigInteger getEthBalance(String address){
+        BigInteger balance = null;
+        try {
+            balance = web3.ethGetBalance(address, DefaultBlockParameterName.LATEST).send().getBalance();
+        } catch (IOException e) {
+            Log.e(TAG ,"错误提示信息:"+e.getMessage());
+            return balance;
+        }
+        return balance;
     }
 }
