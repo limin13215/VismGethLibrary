@@ -36,9 +36,13 @@ public class VismGeth {
     private static final String DEFAULT_GASLIMIT_TOKENS = "90000";
     private static final String DEFAULT_GASLIMIT_ETH = "25200";
     private static final String ETHERSCAN_API_KEY= "QVPD417PDAIRRF8RGPEDQGMF6G3GE74BPG";
+    private static final String GetTokenBalanceUrl = "https://api.etherscan.io/api?module=account&action=tokenbalance&contractaddress=CONTRACT_ADDRESS&address=WALLET_ADDRESS&tag=latest&apikey=YourApiKeyToken";
+
     private Web3j web3;
     private Context context;
     Credentials credentials = null;
+    private String resultJson = "";
+
     public VismGeth(){}
     public VismGeth(Context context){
         this.context = context;
@@ -241,5 +245,27 @@ public class VismGeth {
             return balance;
         }
         return balance;
+    }
+
+    /**
+     *   通过代币合约地址，查询代币数量，
+     * @param address
+     * @param contractAddress
+     * @return
+     */
+    public String getTokenBalance(String address,String contractAddress){
+        final String url = GetTokenBalanceUrl
+                     .replace("CONTRACT_ADDRESS",contractAddress)
+                     .replace("WALLET_ADDRESS",address)
+                     .replace("YourApiKeyToken",ETHERSCAN_API_KEY);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                // {"status":"1","message":"OK","result":"135499"}
+                resultJson = HttpUtils.doGet(url);
+            }
+        }).start();
+
+        return JsonTools.parseJSONWithJSONObject(resultJson);
     }
 }
