@@ -13,6 +13,7 @@ import org.web3j.crypto.WalletUtils;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.Web3jFactory;
 import org.web3j.protocol.core.DefaultBlockParameterName;
+import org.web3j.protocol.core.methods.request.Transaction;
 import org.web3j.protocol.core.methods.response.EthGetTransactionCount;
 import org.web3j.protocol.core.methods.response.EthSendTransaction;
 import org.web3j.protocol.http.HttpService;
@@ -25,13 +26,16 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.concurrent.ExecutionException;
 
+
 /**
  * Created by Administrator on 2018-3-7.
  */
 
 public class VismGeth {
     private static final  String TAG ="VismGethLibrary";
-    private static final BigInteger GAS_LIMIT = BigInteger.valueOf(4300000);
+    private static final String DEFAULT_GASLIMIT_TOKENS = "90000";
+    private static final String DEFAULT_GASLIMIT_ETH = "25200";
+    private static final String ETHERSCAN_API_KEY= "QVPD417PDAIRRF8RGPEDQGMF6G3GE74BPG";
     private Web3j web3;
     private Context context;
     Credentials credentials = null;
@@ -98,22 +102,32 @@ public class VismGeth {
 
     /**
      *   ETH 进行转账,并返回交易哈希值 ;如果返回值为null，交易未广播成功
+     *
+     *   注意: 当gasLimit=""或者gasLimit=null ，自动估算gasLimit， 否则，进行自定义转账;
      * @param to
      * @param gasPrice
      * @param balance
      * @return
      */
-    public String sendETH(String to, String gasPrice,String balance){
+    public String sendETH(String to, String gasPrice,String gasLimit,String balance){
         String transaction_hash = "";
+        String calculationGas = "";
         try {
             // get the next available nonce
             EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
             BigInteger nonce = ethGetTransactionCount.getTransactionCount();
+
+            if (gasLimit!=null && gasLimit.length()!=0){
+                calculationGas = gasLimit;
+            }else {
+                calculationGas = DEFAULT_GASLIMIT_ETH;
+            }
+
             // create transaction
             RawTransaction rawTransaction  = RawTransaction.createEtherTransaction(
                     nonce,
                     new BigInteger(gasPrice),
-                    GAS_LIMIT,
+                    new BigInteger(calculationGas),
                     to,
                     new BigInteger(balance));
             // sign & send our transaction
@@ -128,15 +142,18 @@ public class VismGeth {
     }
 
     /**
-     *   根据代币合约地址， 进行代币转账
+     *   根据代币合约地址， 进行代币转账;
+     *         当gasLimit=""或者gasLimit=null ，自动估算gasLimit， 否则，进行自定义转账;
+     *
      * @param to
      * @param gasPrice
      * @param balance
      * @param contractAddress
      * @return 交易哈希值
      */
-    public String sendTokenByContract(String to, String gasPrice, String balance, String contractAddress){
+    public String sendTokenByContract(String to, String gasPrice, String gasLimit, String balance, String contractAddress){
         String transaction_hash = "";
+        String estimateGas = "";
         try {
             // get the next available nonce
             EthGetTransactionCount ethGetTransactionCount = web3.ethGetTransactionCount(credentials.getAddress(), DefaultBlockParameterName.LATEST).send();
@@ -145,10 +162,25 @@ public class VismGeth {
             Function tranferFunc = ContractTools.transfer(to,balance);
             String encodedFunction = FunctionEncoder.encode(tranferFunc);
 
+            if (gasLimit!=null && gasLimit.length()!=0){
+                //自定义gas
+                estimateGas = gasLimit;
+            }else {
+                //gasLimit=null || gasLimit=""，估值gas大小
+                estimateGas = getEstimateGasLimit(
+                                credentials.getAddress(),
+                                nonce,
+                                new BigInteger(gasPrice),
+                                new BigInteger(DEFAULT_GASLIMIT_TOKENS),
+                                contractAddress,
+                                encodedFunction
+                                );
+            }
+
             RawTransaction rawTransaction = RawTransaction.createTransaction(
                     nonce,
                     new BigInteger(gasPrice),
-                    GAS_LIMIT,
+                    new BigInteger(estimateGas),
                     contractAddress,
                     encodedFunction);
 
@@ -165,6 +197,34 @@ public class VismGeth {
             e.printStackTrace();
         }
         return transaction_hash;
+    }
+
+    /**
+     *   估算代币gasLimit:
+     *        计算代币进行合约转账时，消耗的gas数量
+     * @param address
+     * @param nonce
+     * @param gasPrice
+     * @param gasLimit
+     * @param contractAddress
+     * @param encodedFunction
+     * @return String
+     */
+    public String getEstimateGasLimit(String address, BigInteger nonce,
+                                      BigInteger gasPrice, BigInteger gasLimit,
+                                      String contractAddress, String encodedFunction) {
+        String result ="";
+        Transaction transaction =
+                Transaction.createFunctionCallTransaction(address,nonce,gasPrice,gasLimit,
+                                                          contractAddress,encodedFunction);
+        try {
+            result = web3.ethEstimateGas(transaction).send().getAmountUsed().toString();
+            int num = Integer.valueOf(result) + 20000;
+            result = ""+num;
+        } catch (IOException e) {
+            return DEFAULT_GASLIMIT_TOKENS;
+        }
+        return result;
     }
 
     /**
