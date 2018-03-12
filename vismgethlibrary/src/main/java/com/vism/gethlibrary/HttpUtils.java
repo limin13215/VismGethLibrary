@@ -8,6 +8,15 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * Created by Administrator on 2018-3-12.
@@ -77,11 +86,21 @@ public class HttpUtils {
             url = new URL(urlStr);
             System.out.println("链接地址:"+url);
             conn = (HttpURLConnection) url.openConnection();
+            //如果是https
+            if (conn instanceof HttpsURLConnection)
+            {
+                SSLContext sc = SSLContext.getInstance("SSL");
+                sc.init(null, new TrustManager[]{new TrustAnyTrustManager()}, new java.security.SecureRandom());
+                ((HttpsURLConnection) conn).setSSLSocketFactory(sc.getSocketFactory());
+                ((HttpsURLConnection) conn).setHostnameVerifier(new TrustAnyHostnameVerifier());
+            }else {
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("accept", "*/*");
+                conn.setRequestProperty("connection", "Keep-Alive");
+            }
             conn.setReadTimeout(TIMEOUT_IN_MILLIONS);
             conn.setConnectTimeout(TIMEOUT_IN_MILLIONS);
-            conn.setRequestMethod("GET");
-            conn.setRequestProperty("accept", "*/*");
-            conn.setRequestProperty("connection", "Keep-Alive");
+
             if (conn.getResponseCode() == 200) {
                 is = conn.getInputStream();
                 baos = new ByteArrayOutputStream();
@@ -91,7 +110,7 @@ public class HttpUtils {
                     baos.write(buf, 0, len);
                 }
                 baos.flush();
-                System.out.println("返回数据:"+baos.toString());
+                System.out.println("返回json数据:"+baos.toString());
                 return baos.toString();
             } else {
                 throw new RuntimeException(" responseCode is  not 200 ... ");
@@ -132,16 +151,25 @@ public class HttpUtils {
         String result = "";
         try {
             URL realUrl = new URL(url); // 打开和URL之间的连接
-            HttpURLConnection conn = (HttpURLConnection) realUrl
-                    .openConnection(); // 设置通用的请求属性
-            conn.setRequestProperty("accept", "*/*");
-            conn.setRequestProperty("connection", "Keep-Alive");
-            conn.setRequestMethod("POST");
-            conn.setRequestProperty("Content-Type","application/x-www-form-urlencoded");  // 设置内容类型
-            conn.setRequestProperty("charset", "utf-8");   // 设置字符编码
-            conn.setUseCaches(false); // 发送POST请求必须设置如下两行
-            conn.setDoOutput(true);
-            conn.setDoInput(true);     // 设置是否从httpUrlConnection读入，默认情况下是true;
+            HttpURLConnection conn = (HttpURLConnection) realUrl.openConnection();
+            //如果是https
+            if (conn instanceof HttpsURLConnection)
+            {
+                SSLContext sc = SSLContext.getInstance("SSL");
+                sc.init(null, new TrustManager[]{new TrustAnyTrustManager()}, new java.security.SecureRandom());
+                ((HttpsURLConnection) conn).setSSLSocketFactory(sc.getSocketFactory());
+                ((HttpsURLConnection) conn).setHostnameVerifier(new TrustAnyHostnameVerifier());
+            }else {
+                // 设置通用的请求属性
+                conn.setRequestProperty("accept", "*/*");
+                conn.setRequestProperty("connection", "Keep-Alive");
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");  // 设置内容类型
+                conn.setRequestProperty("charset", "utf-8");   // 设置字符编码
+                conn.setUseCaches(false); // 发送POST请求必须设置如下两行
+                conn.setDoOutput(true);
+                conn.setDoInput(true);     // 设置是否从httpUrlConnection读入，默认情况下是true;
+            }
             conn.setReadTimeout(TIMEOUT_IN_MILLIONS);        // 将读超时设置为指定的超时，以毫秒为单位。
             conn.setConnectTimeout(TIMEOUT_IN_MILLIONS);	// 设置一个指定的超时值（以毫秒为单位）
             if (param != null && !param.trim().equals("")) { // 获取URLConnection对象对应的输出流
@@ -171,5 +199,33 @@ public class HttpUtils {
             }
         }
         return result;
+    }
+
+    /**
+     * 证书信任管理器（用于https请求） .
+     */
+    private static class TrustAnyTrustManager implements X509TrustManager
+    {
+
+        public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException
+        {
+        }
+
+        public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException
+        {
+        }
+
+        public X509Certificate[] getAcceptedIssuers()
+        {
+            return new X509Certificate[]{};
+        }
+    }
+
+    private static class TrustAnyHostnameVerifier implements HostnameVerifier
+    {
+        public boolean verify(String hostname, SSLSession session)
+        {
+            return true;
+        }
     }
 }
