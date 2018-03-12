@@ -25,8 +25,12 @@ import javax.net.ssl.X509TrustManager;
 public class HttpUtils {
     private static final int TIMEOUT_IN_MILLIONS = 5000;
 
+    private HttpUtilsCallBack myCallBack;
     public interface HttpUtilsCallBack {
         void onRequestComplete(String result);
+    }
+    public void setMyCallBack(HttpUtilsCallBack httpUtilsCallBack){
+        myCallBack = httpUtilsCallBack;
     }
 
     /**
@@ -34,7 +38,7 @@ public class HttpUtils {
      *   @param urlStr
      *   @param callBack
      */
-    public static void doGetAsyn(final String urlStr, final HttpUtilsCallBack callBack) {
+    public  void doGetAsyn(final String urlStr, final HttpUtilsCallBack callBack) {
         new Thread() {
             public void run() {
                 try {
@@ -77,7 +81,7 @@ public class HttpUtils {
      * @param urlStr
      * @return
      */
-    public static String doGet(String urlStr) {
+    public  String doGet(String urlStr) {
         URL url = null;
         HttpURLConnection conn = null;
         InputStream is = null;
@@ -110,7 +114,12 @@ public class HttpUtils {
                     baos.write(buf, 0, len);
                 }
                 baos.flush();
-                System.out.println("返回json数据:"+baos.toString());
+                String json = baos.toString();
+                System.out.println("返回json数据:"+json);
+                if (json!=null && json.length()!=0) {
+                    //返回的json字符串不为空，执行回调函数
+                    myCallBack.onRequestComplete(baos.toString());
+                }
                 return baos.toString();
             } else {
                 throw new RuntimeException(" responseCode is  not 200 ... ");

@@ -1,5 +1,6 @@
 package com.vism.gethlibrary;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 /**
@@ -24,7 +25,7 @@ public class JsonTools {
             }else {
                 result = jsonObject.getString("result");
             }
-        } catch (Exception e) {
+        } catch (JSONException e) {
             return "查询失败";
         }
         return result;
