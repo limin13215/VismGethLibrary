@@ -11,7 +11,7 @@ allprojects {
 **2.在Module build.gradle添加依赖**
 ```
 dependencies {
-	        compile 'com.github.limin13215:VismGethLibrary:v1.0.2'
+	        compile 'com.github.limin13215:VismGethLibrary:v1.0.5'
 }
 ```
 
