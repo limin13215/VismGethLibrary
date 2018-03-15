@@ -92,7 +92,7 @@ public class VismGeth {
     }
 
     /**
-     *  导入钱包，并且返回钱包凭证; 如果返回值为null, 导入钱包失败;
+     *  导入第三方钱包，并且返回钱包凭证;
      * @param password
      * @param keystore
      * @param filename
